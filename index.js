@@ -1,7 +1,4 @@
-// ============================================
-// BACKEND - TAMIZAJE VISUAL
-// Node.js + Express + MySQL (Compatible con XAMPP)
-// ============================================
+
 
 const express = require('express');
 const mysql = require('mysql2/promise');
@@ -13,27 +10,23 @@ require('dotenv').config();
 const app = express();
 
 
-//------------------------
+
 const http = require('http');
 const { Server } = require('socket.io');
 
-// Crear servidor HTTP (IMPORTANTE: Esto reemplaza app.listen al final)
+
 const server = http.createServer(app);
 
-// Configurar Socket.IO
+
 const urlFront = process.env.URL_FRONT;
 const io = new Server(server, {
   cors: {
-    origin: urlFront, // URL de tu frontend Vite
+    origin: urlFront,
     methods: ["GET", "POST"],
     credentials: true
   }
 });
-//-------------------------------
 
-// ============================================
-// CONFIGURACIÓN
-// ============================================
 app.use(express.json());
 
 app.use(cors({
@@ -50,7 +43,7 @@ app.use(cors({
 const JWT_SECRET = process.env.JWT_SECRET;
 
 
-// Pool de conexiones optimizado para producción
+
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
   user: process.env.DB_USER,
@@ -64,7 +57,7 @@ const pool = mysql.createPool({
   timeout: 60000,
   reconnect: true
 });
-// Probar conexión al iniciar
+
 pool.getConnection()
   .then(connection => {
     console.log('Conexión exitosa a MySQL (XAMPP)');
@@ -79,9 +72,7 @@ pool.getConnection()
     console.error('4. La base de datos "dbt" exista');
   });
 
-// ============================================
-// MIDDLEWARE DE AUTENTICACIÓN
-// ============================================
+
 const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
@@ -99,7 +90,7 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
-// Middleware para verificar roles
+
 const checkRole = (...roles) => {
   return (req, res, next) => {
     if (!roles.includes(req.user.rol)) {
@@ -109,11 +100,7 @@ const checkRole = (...roles) => {
   };
 };
 
-// ============================================
-// RUTAS DE AUTENTICACIÓN
-// ============================================
 
-// LOGIN - Agrega estos console.log para depurar
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { username, password } = req.body;
@@ -147,13 +134,13 @@ app.post('/api/auth/login', async (req, res) => {
 
     console.log('Login exitoso para:', user.username);
 
-    // Actualizar último acceso
+
     await pool.query(
       'UPDATE USUARIO SET ultimo_acceso = NOW() WHERE id_usuario = ?',
       [user.id_usuario]
     );
 
-    // Registrar en auditoría
+
     await pool.query(
       'INSERT INTO AUDITORIA (id_usuario, accion, descripcion, ip_address) VALUES (?, ?, ?, ?)',
       [user.id_usuario, 'login', 'Inicio de sesión exitoso', req.ip]
@@ -185,7 +172,7 @@ app.post('/api/auth/login', async (req, res) => {
   }
 });
 
-// CAMBIAR CONTRASEÑA
+
 app.post('/api/auth/cambiar-password', authenticateToken, async (req, res) => {
   try {
     const { password_actual, password_nueva } = req.body;
@@ -215,11 +202,7 @@ app.post('/api/auth/cambiar-password', authenticateToken, async (req, res) => {
   }
 });
 
-// ============================================
-// RUTAS DE USUARIOS (Solo Admin)
-// ============================================
 
-// Listar usuarios
 app.get('/api/usuarios', authenticateToken, checkRole('admin'), async (req, res) => {
   try {
     const [usuarios] = await pool.query(
@@ -232,12 +215,12 @@ app.get('/api/usuarios', authenticateToken, checkRole('admin'), async (req, res)
   }
 });
 
-// Crear usuario
+
 app.post('/api/usuarios', authenticateToken, checkRole('admin'), async (req, res) => {
   try {
     const { username, nombre_completo, email, rol } = req.body;
     
-    // Contraseña temporal
+
     const password_temporal = Math.random().toString(36).slice(-8);
     const hash = await bcrypt.hash(password_temporal, 10);
 
@@ -246,7 +229,7 @@ app.post('/api/usuarios', authenticateToken, checkRole('admin'), async (req, res
       [username, hash, nombre_completo, email, rol, req.user.id]
     );
 
-    // Registrar auditoría
+
     await pool.query(
       'INSERT INTO AUDITORIA (id_usuario, accion, tabla_afectada, id_registro_afectado, descripcion) VALUES (?, ?, ?, ?, ?)',
       [req.user.id, 'crear', 'USUARIO', result.insertId, `Usuario ${username} creado`]
@@ -266,7 +249,7 @@ app.post('/api/usuarios', authenticateToken, checkRole('admin'), async (req, res
   }
 });
 
-// Editar usuario
+
 app.put('/api/usuarios/:id', authenticateToken, checkRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -284,7 +267,7 @@ app.put('/api/usuarios/:id', authenticateToken, checkRole('admin'), async (req, 
   }
 });
 
-// Eliminar usuario
+
 app.delete('/api/usuarios/:id', authenticateToken, checkRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -300,13 +283,6 @@ app.delete('/api/usuarios/:id', authenticateToken, checkRole('admin'), async (re
 
 
 
-
-
-// ============================================
-// RUTAS DE NIÑOS
-// ============================================
-
-// Listar niños
 app.get('/api/ninos', authenticateToken, async (req, res) => {
   try {
     const [ninos] = await pool.query(
@@ -326,7 +302,6 @@ app.get('/api/ninos', authenticateToken, async (req, res) => {
 });
 
 
-// 1. BUSCAR NIÑOS (DEBE IR ANTES DE /api/ninos/:id)
 app.get('/api/ninos/buscar', authenticateToken, async (req, res) => {
   try {
     const { termino, fecha } = req.query;
@@ -370,19 +345,16 @@ app.get('/api/ninos/buscar', authenticateToken, async (req, res) => {
 });
 
 
-// Obtener niño específico con todos sus datos
 app.get('/api/ninos/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Datos del niño
     const [nino] = await pool.query('SELECT * FROM NINO WHERE id_nino = ?', [id]);
     
     if (nino.length === 0) {
       return res.status(404).json({ error: 'Niño no encontrado' });
     }
 
-    // Tutores
     const [tutores] = await pool.query(
       `SELECT t.*, hr.parentesco, hr.es_tutor_principal
        FROM TUTOR t
@@ -391,7 +363,7 @@ app.get('/api/ninos/:id', authenticateToken, async (req, res) => {
       [id]
     );
 
-    // Tamizajes (solo datos generales, NO detalles del examen)
+  
     const [tamizajes] = await pool.query(
       `SELECT id_tamizaje, fecha, ojo, estado, 
               niveles_superados, aciertos_totales, porcentaje_aciertos,
@@ -414,7 +386,7 @@ app.get('/api/ninos/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Crear niño
+
 app.post('/api/ninos', authenticateToken, checkRole('admin', 'operador'), async (req, res) => {
   try {
     const { 
@@ -440,10 +412,6 @@ app.post('/api/ninos', authenticateToken, checkRole('admin', 'operador'), async 
 });
 
 
-
-
-
-// Actualizar niño
 app.put('/api/ninos/:id', authenticateToken, checkRole('admin', 'operador'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -464,14 +432,10 @@ app.put('/api/ninos/:id', authenticateToken, checkRole('admin', 'operador'), asy
   }
 });
 
-// ============================================
-// ENDPOINT PARA RECIBIR DATOS DE UNITY (FIREBASE)
-// ============================================
 app.post('/api/unity/tamizaje', async (req, res) => {
   try {
     const { child, trials } = req.body;
 
-    // 1. Buscar o crear niño
     let id_nino;
     const [existeNino] = await pool.query(
       'SELECT id_nino FROM NINO WHERE carnet_nino = ?',
@@ -488,7 +452,6 @@ app.post('/api/unity/tamizaje', async (req, res) => {
       id_nino = nuevoNino.insertId;
     }
 
-    // 2. Crear tamizaje por ojo
     const ojosUnicos = [...new Set(trials.map(t => t.eye))];
     
     for (const ojo of ojosUnicos) {
@@ -506,7 +469,6 @@ app.post('/api/unity/tamizaje', async (req, res) => {
         [id_nino, ojo, nivelesUnicos.length, aciertos, porcentaje, tiempoPromedio]
       );
 
-      // 3. Insertar cada trial
       for (const trial of trialsOjo) {
         await pool.query(
           'INSERT INTO EXAMEN (nivel, direccion_mostrada, respuesta, correcto, tiempo, id_tamizaje) VALUES (?, ?, ?, ?, ?, ?)',
@@ -526,14 +488,10 @@ app.post('/api/unity/tamizaje', async (req, res) => {
   }
 });
 
-// ============================================
-// ENDPOINT PARA IA DE ERROR REFRACTIVO
-// ============================================
 app.post('/api/ia/predecir-error', authenticateToken, async (req, res) => {
   try {
     const { id_tamizaje } = req.body;
 
-    // Obtener datos del tamizaje
     const [tamizaje] = await pool.query(
       `SELECT * FROM TAMIZAJE_OJO WHERE id_tamizaje = ?`,
       [id_tamizaje]
@@ -543,13 +501,6 @@ app.post('/api/ia/predecir-error', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Tamizaje no encontrado' });
     }
 
-    // TODO: Llamar a microservicio de IA Python
-    // const respuestaIA = await fetch('http://ia-python:5000/predecir', {
-    //   method: 'POST',
-    //   body: JSON.stringify(tamizaje[0])
-    // });
-
-    // Por ahora retornar placeholder
     res.json({
       mensaje: 'Funcionalidad de IA pendiente de implementación',
       nota: 'Se implementará cuando tengas el microservicio Python listo'
@@ -561,10 +512,7 @@ app.post('/api/ia/predecir-error', authenticateToken, async (req, res) => {
   }
 });
 
-// ============================================
-// RUTA DE PRUEBA (Health Check)
-// ============================================
-// En la ruta /api/health, modifícala para que sea más detallada:
+
 app.get('/api/health', async (req, res) => {
   try {
     const [result] = await pool.query('SELECT 1 as ok');
@@ -583,9 +531,6 @@ app.get('/api/health', async (req, res) => {
     });
   }
 });
-//_-------------------------------------------
-// ENDPOINT CORREGIDO PARA CREAR NIÑO COMPLETO
-// Reemplaza el endpoint existente en tu index.js (línea ~420)
 
 app.post('/api/ninos/completo', authenticateToken, checkRole('admin', 'operador'), async (req, res) => {
   let connection;
@@ -593,7 +538,7 @@ app.post('/api/ninos/completo', authenticateToken, checkRole('admin', 'operador'
   try {
     const { nino, tutor, tamizaje_oid, tamizaje_oi } = req.body;
 
-    // Validación básica - solo el nombre del niño es obligatorio
+    
     if (!nino || !nino.nombres_nino || !nino.nombres_nino.trim()) {
       return res.status(400).json({ 
         error: 'El nombre del niño es obligatorio' 
@@ -603,7 +548,7 @@ app.post('/api/ninos/completo', authenticateToken, checkRole('admin', 'operador'
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
-    // 1. INSERTAR NIÑO
+
     const [resultNino] = await connection.query(
       `INSERT INTO NINO 
        (carnet_nino, nombres_nino, paterno_nino, materno_nino, fecha_nacimiento, genero, url_imagen, observaciones, registrado_por)
@@ -623,7 +568,7 @@ app.post('/api/ninos/completo', authenticateToken, checkRole('admin', 'operador'
 
     const id_nino = resultNino.insertId;
 
-    // 2. INSERTAR TUTOR (si se proporciona al menos el nombre)
+
     let id_tutor = null;
     if (tutor && tutor.nombre_tutor && tutor.nombre_tutor.trim()) {
       const [resultTutor] = await connection.query(
@@ -642,7 +587,6 @@ app.post('/api/ninos/completo', authenticateToken, checkRole('admin', 'operador'
 
       id_tutor = resultTutor.insertId;
 
-      // 3. CREAR RELACIÓN NIÑO-TUTOR en HACE_REVISAR_A
       await connection.query(
         `INSERT INTO HACE_REVISAR_A 
          (id_nino, id_tutor, parentesco, es_tutor_principal, fecha_registro)
@@ -656,17 +600,15 @@ app.post('/api/ninos/completo', authenticateToken, checkRole('admin', 'operador'
       );
     }
 
-    // 4. INSERTAR TAMIZAJES (si se proporcionan)
     const tamizajes = [];
 
-    // Helper function para convertir valores vacíos a null
     const toNumberOrNull = (value) => {
       if (value === '' || value === null || value === undefined) return null;
       const num = parseFloat(value);
       return isNaN(num) ? null : num;
     };
 
-    // Tamizaje Ojo Derecho
+
     if (tamizaje_oid && tamizaje_oid.fecha) {
       const [resultTamizajeOD] = await connection.query(
         `INSERT INTO TAMIZAJE_OJO 
@@ -676,7 +618,7 @@ app.post('/api/ninos/completo', authenticateToken, checkRole('admin', 'operador'
          VALUES (?, ?, ?, ?, 'DERECHO', ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id_nino,
-          id_tutor, // Puede ser null si no hay tutor
+          id_tutor, 
           tamizaje_oid.estado || 'completado',
           tamizaje_oid.fecha,
           toNumberOrNull(tamizaje_oid.niveles_superados),
@@ -692,7 +634,7 @@ app.post('/api/ninos/completo', authenticateToken, checkRole('admin', 'operador'
       tamizajes.push({ ojo: 'DERECHO', id: resultTamizajeOD.insertId });
     }
 
-    // Tamizaje Ojo Izquierdo
+
     if (tamizaje_oi && tamizaje_oi.fecha) {
       const [resultTamizajeOI] = await connection.query(
         `INSERT INTO TAMIZAJE_OJO 
@@ -702,7 +644,7 @@ app.post('/api/ninos/completo', authenticateToken, checkRole('admin', 'operador'
          VALUES (?, ?, ?, ?, 'IZQUIERDO', ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           id_nino,
-          id_tutor, // Puede ser null si no hay tutor
+          id_tutor, 
           tamizaje_oi.estado || 'completado',
           tamizaje_oi.fecha,
           toNumberOrNull(tamizaje_oi.niveles_superados),
@@ -718,7 +660,6 @@ app.post('/api/ninos/completo', authenticateToken, checkRole('admin', 'operador'
       tamizajes.push({ ojo: 'IZQUIERDO', id: resultTamizajeOI.insertId });
     }
 
-    // Registrar en auditoría
     await connection.query(
       'INSERT INTO AUDITORIA (id_usuario, accion, tabla_afectada, id_registro_afectado, descripcion) VALUES (?, ?, ?, ?, ?)',
       [
@@ -764,19 +705,6 @@ app.post('/api/ninos/completo', authenticateToken, checkRole('admin', 'operador'
 });
 
 
-//--------------------------------------------
-
-//-------------------------------------------
-
-// ============================================
-// ENDPOINTS ADICIONALES PARA LISTA DE NIÑOS
-// IMPORTANTE: Agregar estos endpoints EN ESTE ORDEN a tu index.js
-// ANTES del endpoint GET /api/ninos/:id
-// ============================================
-
-
-
-// 2. OBTENER PERMISOS DEL USUARIO ACTUAL
 app.get('/api/permisos/mis-permisos', authenticateToken, async (req, res) => {
   try {
     const [permisos] = await pool.query(
@@ -785,7 +713,6 @@ app.get('/api/permisos/mis-permisos', authenticateToken, async (req, res) => {
     );
 
     if (permisos.length === 0) {
-      // Si no tiene permisos específicos, asignar permisos por defecto según el rol
       const permisosDefault = {
         puede_crear_ninos: req.user.rol === 'admin' || req.user.rol === 'operador',
         puede_editar_ninos: req.user.rol === 'admin' || req.user.rol === 'operador',
@@ -804,7 +731,6 @@ app.get('/api/permisos/mis-permisos', authenticateToken, async (req, res) => {
   }
 });
 
-// 2. ACTUALIZAR DATOS COMPLETOS DEL NIÑO
 app.put('/api/ninos/:id/actualizar-completo', authenticateToken, checkRole('admin', 'operador'), async (req, res) => {
   let connection;
   
@@ -815,7 +741,6 @@ app.put('/api/ninos/:id/actualizar-completo', authenticateToken, checkRole('admi
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
-    // 1. ACTUALIZAR NIÑO (si se proporcionan datos)
     if (nino) {
       const camposNino = [];
       const valoresNino = [];
@@ -836,7 +761,6 @@ app.put('/api/ninos/:id/actualizar-completo', authenticateToken, checkRole('admi
       }
     }
 
-    // 2. ACTUALIZAR TUTOR (si se proporciona)
     if (tutor && tutor.id_tutor) {
       const camposTutor = [];
       const valoresTutor = [];
@@ -856,7 +780,6 @@ app.put('/api/ninos/:id/actualizar-completo', authenticateToken, checkRole('admi
         );
       }
 
-      // Actualizar relación HACE_REVISAR_A
       if (tutor.parentesco !== undefined || tutor.es_tutor_principal !== undefined) {
         await connection.query(
           `UPDATE HACE_REVISAR_A 
@@ -868,14 +791,23 @@ app.put('/api/ninos/:id/actualizar-completo', authenticateToken, checkRole('admi
       }
     }
 
-    // Helper para convertir valores
     const toNumberOrNull = (value) => {
       if (value === '' || value === null || value === undefined) return null;
       const num = parseFloat(value);
       return isNaN(num) ? null : num;
     };
 
-    // 3. ACTUALIZAR TAMIZAJE OJO DERECHO
+    const toDateOrNull = (value) => {
+      if (!value || value === '') return null;
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return value;
+      }
+      if (value.includes('T')) {
+        return value.split('T')[0];
+      }
+      return value;
+    };
+
     if (tamizaje_oid && tamizaje_oid.id_tamizaje) {
       const camposTamizaje = [];
       const valoresTamizaje = [];
@@ -883,8 +815,11 @@ app.put('/api/ninos/:id/actualizar-completo', authenticateToken, checkRole('admi
       Object.keys(tamizaje_oid).forEach(key => {
         if (key !== 'id_tamizaje') {
           camposTamizaje.push(`${key} = ?`);
-          if (['niveles_superados', 'aciertos_totales', 'porcentaje_aciertos', 
-               'tiempo_promedio', 'error_vertical', 'error_horizontal'].includes(key)) {
+          
+          if (key === 'fecha') {
+            valoresTamizaje.push(toDateOrNull(tamizaje_oid[key]));
+          } else if (['niveles_superados', 'aciertos_totales', 'porcentaje_aciertos', 
+                      'tiempo_promedio', 'error_vertical', 'error_horizontal'].includes(key)) {
             valoresTamizaje.push(toNumberOrNull(tamizaje_oid[key]));
           } else {
             valoresTamizaje.push(tamizaje_oid[key] || null);
@@ -901,7 +836,7 @@ app.put('/api/ninos/:id/actualizar-completo', authenticateToken, checkRole('admi
       }
     }
 
-    // 4. ACTUALIZAR TAMIZAJE OJO IZQUIERDO
+
     if (tamizaje_oi && tamizaje_oi.id_tamizaje) {
       const camposTamizaje = [];
       const valoresTamizaje = [];
@@ -909,8 +844,11 @@ app.put('/api/ninos/:id/actualizar-completo', authenticateToken, checkRole('admi
       Object.keys(tamizaje_oi).forEach(key => {
         if (key !== 'id_tamizaje') {
           camposTamizaje.push(`${key} = ?`);
-          if (['niveles_superados', 'aciertos_totales', 'porcentaje_aciertos', 
-               'tiempo_promedio', 'error_vertical', 'error_horizontal'].includes(key)) {
+          
+          if (key === 'fecha') {
+            valoresTamizaje.push(toDateOrNull(tamizaje_oi[key]));
+          } else if (['niveles_superados', 'aciertos_totales', 'porcentaje_aciertos', 
+                      'tiempo_promedio', 'error_vertical', 'error_horizontal'].includes(key)) {
             valoresTamizaje.push(toNumberOrNull(tamizaje_oi[key]));
           } else {
             valoresTamizaje.push(tamizaje_oi[key] || null);
@@ -927,7 +865,6 @@ app.put('/api/ninos/:id/actualizar-completo', authenticateToken, checkRole('admi
       }
     }
 
-    // Registrar en auditoría
     await connection.query(
       'INSERT INTO AUDITORIA (id_usuario, accion, tabla_afectada, id_registro_afectado, descripcion) VALUES (?, ?, ?, ?, ?)',
       [req.user.id, 'editar', 'NINO', id, `Actualización de datos del niño ID ${id}`]
@@ -953,15 +890,12 @@ app.put('/api/ninos/:id/actualizar-completo', authenticateToken, checkRole('admi
 });
 
 
-
-// 3. ELIMINAR NIÑO (con confirmación de seguridad)
 app.delete('/api/ninos/:id', authenticateToken, checkRole('admin'), async (req, res) => {
   let connection;
   
   try {
     const { id } = req.params;
 
-    // Verificar que el niño existe
     const [nino] = await pool.query('SELECT nombres_nino, paterno_nino FROM NINO WHERE id_nino = ?', [id]);
     
     if (nino.length === 0) {
@@ -971,7 +905,6 @@ app.delete('/api/ninos/:id', authenticateToken, checkRole('admin'), async (req, 
     connection = await pool.getConnection();
     await connection.beginTransaction();
 
-    // Registrar en auditoría ANTES de eliminar
     await connection.query(
       'INSERT INTO AUDITORIA (id_usuario, accion, tabla_afectada, id_registro_afectado, descripcion) VALUES (?, ?, ?, ?, ?)',
       [
@@ -982,8 +915,6 @@ app.delete('/api/ninos/:id', authenticateToken, checkRole('admin'), async (req, 
         `Eliminación del niño: ${nino[0].nombres_nino} ${nino[0].paterno_nino || ''}`
       ]
     );
-
-    // Eliminar niño (las relaciones se eliminan automáticamente por ON DELETE CASCADE)
     await connection.query('DELETE FROM NINO WHERE id_nino = ?', [id]);
 
     await connection.commit();
@@ -1006,13 +937,6 @@ app.delete('/api/ninos/:id', authenticateToken, checkRole('admin'), async (req, 
 });
 
 
-//---------------------------------------------
-// ============================================
-// ENDPOINTS DE PERMISOS
-// Agregar estos endpoints a tu index.js después de las rutas de usuarios
-// ============================================
-
-// Obtener permisos de un usuario específico
 app.get('/api/permisos/usuario/:id', authenticateToken, checkRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -1023,7 +947,6 @@ app.get('/api/permisos/usuario/:id', authenticateToken, checkRole('admin'), asyn
     );
 
     if (permisos.length === 0) {
-      // Si no tiene permisos asignados, retornar permisos por defecto según rol
       const [usuario] = await pool.query(
         'SELECT rol FROM USUARIO WHERE id_usuario = ?',
         [id]
@@ -1078,7 +1001,6 @@ app.get('/api/permisos/usuario/:id', authenticateToken, checkRole('admin'), asyn
   }
 });
 
-// Crear o actualizar permisos de un usuario
 app.put('/api/permisos/usuario/:id', authenticateToken, checkRole('admin'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -1091,14 +1013,12 @@ app.put('/api/permisos/usuario/:id', authenticateToken, checkRole('admin'), asyn
       puede_gestionar_usuarios
     } = req.body;
 
-    // Verificar si ya existen permisos para este usuario
     const [permisosExistentes] = await pool.query(
       'SELECT id_permiso FROM PERMISOS WHERE id_usuario = ?',
       [id]
     );
 
     if (permisosExistentes.length > 0) {
-      // Actualizar permisos existentes
       await pool.query(
         `UPDATE PERMISOS SET 
          puede_crear_ninos = ?, 
@@ -1119,7 +1039,6 @@ app.put('/api/permisos/usuario/:id', authenticateToken, checkRole('admin'), asyn
         ]
       );
     } else {
-      // Crear nuevos permisos
       await pool.query(
         `INSERT INTO PERMISOS 
          (id_usuario, puede_crear_ninos, puede_editar_ninos, puede_eliminar_ninos, 
@@ -1137,7 +1056,6 @@ app.put('/api/permisos/usuario/:id', authenticateToken, checkRole('admin'), asyn
       );
     }
 
-    // Registrar en auditoría
     await pool.query(
       'INSERT INTO AUDITORIA (id_usuario, accion, tabla_afectada, id_registro_afectado, descripcion) VALUES (?, ?, ?, ?, ?)',
       [req.user.id, 'editar', 'PERMISOS', id, `Actualización de permisos del usuario ID ${id}`]
@@ -1150,10 +1068,6 @@ app.put('/api/permisos/usuario/:id', authenticateToken, checkRole('admin'), asyn
   }
 });
 
-// ============================================
-// MODIFICAR EL ENDPOINT DE CREAR USUARIO
-// Reemplazar el endpoint POST /api/usuarios existente con este:
-// ============================================
 
 app.post('/api/usuarios', authenticateToken, checkRole('admin'), async (req, res) => {
   let connection;
@@ -1164,11 +1078,9 @@ app.post('/api/usuarios', authenticateToken, checkRole('admin'), async (req, res
     connection = await pool.getConnection();
     await connection.beginTransaction();
     
-    // Contraseña temporal
     const password_temporal = Math.random().toString(36).slice(-8);
     const hash = await bcrypt.hash(password_temporal, 10);
 
-    // Crear usuario
     const [result] = await connection.query(
       'INSERT INTO USUARIO (username, password_hash, nombre_completo, email, rol, creado_por, debe_cambiar_password) VALUES (?, ?, ?, ?, ?, ?, TRUE)',
       [username, hash, nombre_completo, email, rol, req.user.id]
@@ -1176,7 +1088,6 @@ app.post('/api/usuarios', authenticateToken, checkRole('admin'), async (req, res
 
     const nuevoUsuarioId = result.insertId;
 
-    // Crear permisos si se proporcionan
     if (permisos) {
       await connection.query(
         `INSERT INTO PERMISOS 
@@ -1195,7 +1106,6 @@ app.post('/api/usuarios', authenticateToken, checkRole('admin'), async (req, res
       );
     }
 
-    // Registrar auditoría
     await connection.query(
       'INSERT INTO AUDITORIA (id_usuario, accion, tabla_afectada, id_registro_afectado, descripcion) VALUES (?, ?, ?, ?, ?)',
       [req.user.id, 'crear', 'USUARIO', nuevoUsuarioId, `Usuario ${username} creado con permisos personalizados`]
@@ -1219,12 +1129,6 @@ app.post('/api/usuarios', authenticateToken, checkRole('admin'), async (req, res
     if (connection) connection.release();
   }
 });
-//------------------------------------
-//-------------------------------------------------
-
-// ============================================
-// ENDPOINT PARA DESCARGAR PDF DE NIÑO
-// ============================================
 
 const PDFGenerator = require('./pdfGenerator');
 const { CONNREFUSED } = require('dns');
@@ -1233,14 +1137,12 @@ app.get('/api/ninos/:id/pdf', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
 
-    // Obtener datos completos del niño
     const [nino] = await pool.query('SELECT * FROM NINO WHERE id_nino = ?', [id]);
     
     if (nino.length === 0) {
       return res.status(404).json({ error: 'Niño no encontrado' });
     }
 
-    // Tutores
     const [tutores] = await pool.query(
       `SELECT t.*, hr.parentesco, hr.es_tutor_principal
        FROM TUTOR t
@@ -1249,7 +1151,6 @@ app.get('/api/ninos/:id/pdf', authenticateToken, async (req, res) => {
       [id]
     );
 
-    // Tamizajes
     const [tamizajes] = await pool.query(
       `SELECT id_tamizaje, fecha, ojo, estado, 
               niveles_superados, aciertos_totales, porcentaje_aciertos,
@@ -1267,10 +1168,8 @@ app.get('/api/ninos/:id/pdf', authenticateToken, async (req, res) => {
       tamizajes
     };
 
-    // Generar PDF
     const pdfBuffer = await PDFGenerator.generarReporteNino(ninoData);
 
-    // Configurar headers para descarga
     const nombreArchivo = `reporte_${ninoData.nino.nombres_nino}_${ninoData.nino.paterno_nino || ''}.pdf`
       .toLowerCase()
       .replace(/\s+/g, '_')
@@ -1280,10 +1179,8 @@ app.get('/api/ninos/:id/pdf', authenticateToken, async (req, res) => {
     res.setHeader('Content-Disposition', `attachment; filename="${nombreArchivo}"`);
     res.setHeader('Content-Length', pdfBuffer.length);
 
-    // Enviar PDF
     res.send(pdfBuffer);
 
-    // Registrar en auditoría
     await pool.query(
       'INSERT INTO AUDITORIA (id_usuario, accion, tabla_afectada, id_registro_afectado, descripcion) VALUES (?, ?, ?, ?, ?)',
       [
@@ -1304,14 +1201,6 @@ app.get('/api/ninos/:id/pdf', authenticateToken, async (req, res) => {
   }
 });
 
-
-//-------------------------------------------------
-
-
-
-//-----------------------------------
-
-// Verificar token
 app.get('/api/auth/verificar-token', authenticateToken, async (req, res) => {
   try {
     const [users] = await pool.query(
@@ -1329,15 +1218,10 @@ app.get('/api/auth/verificar-token', authenticateToken, async (req, res) => {
     res.status(500).json({ error: 'Error al verificar token' });
   }
 });
-//------------------------------------
 
-//-------------------
-
-// Conexiones de Socket.IO
 io.on('connection', (socket) => {
   console.log(`Usuario conectado: ${socket.username} (ID: ${socket.userId})`);
   
-  // Unir al usuario a su sala personal
   socket.join(`user_${socket.userId}`);
   
   socket.on('disconnect', () => {
@@ -1345,12 +1229,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// ============================================
-// ENDPOINTS DE VIDEOLLAMADAS
-// AGREGAR ANTES DE: app.listen(PORT, ...)
-// ============================================
-
-// Listar videollamadas (activas y del usuario)
 app.get('/api/videollamadas', authenticateToken, async (req, res) => {
   try {
     const [videollamadas] = await pool.query(
@@ -1377,7 +1255,6 @@ app.get('/api/videollamadas', authenticateToken, async (req, res) => {
   }
 });
 
-// Obtener videollamada específica
 app.get('/api/videollamadas/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
@@ -1394,7 +1271,6 @@ app.get('/api/videollamadas/:id', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Videollamada no encontrada' });
     }
     
-    // Obtener participantes
     const [participantes] = await pool.query(
       `SELECT p.*, u.nombre_completo, u.username
        FROM PARTICIPANTES_VIDEOLLAMADA p
@@ -1413,7 +1289,6 @@ app.get('/api/videollamadas/:id', authenticateToken, async (req, res) => {
   }
 });
 
-// Crear videollamada
 app.post('/api/videollamadas', authenticateToken, async (req, res) => {
   let connection;
   
@@ -1431,13 +1306,12 @@ app.post('/api/videollamadas', authenticateToken, async (req, res) => {
     connection = await pool.getConnection();
     await connection.beginTransaction();
     
-    // Generar link único de Jitsi Meet
     const codigoSala = `TamizajeVisual-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const linkJitsi = `https://meet.jit.si/${codigoSala}`;
     
     console.log('Link generado:', linkJitsi);
     
-    // Crear videollamada
+
     const [result] = await connection.query(
       `INSERT INTO SESION_VIDEOLLAMADA 
        (titulo, descripcion, link_meet, creada_por, estado, fecha_inicio)
@@ -1448,7 +1322,6 @@ app.post('/api/videollamadas', authenticateToken, async (req, res) => {
     const idSesion = result.insertId;
     console.log('Videollamada creada con ID:', idSesion);
     
-    // Agregar participantes
     for (const idParticipante of participantes) {
       await connection.query(
         `INSERT INTO PARTICIPANTES_VIDEOLLAMADA (id_sesion, id_usuario)
@@ -1457,7 +1330,6 @@ app.post('/api/videollamadas', authenticateToken, async (req, res) => {
       );
     }
     
-    // Registrar auditoría
     await connection.query(
       `INSERT INTO AUDITORIA 
        (id_usuario, accion, tabla_afectada, id_registro_afectado, descripcion)
@@ -1467,7 +1339,6 @@ app.post('/api/videollamadas', authenticateToken, async (req, res) => {
     
     await connection.commit();
     
-    // Obtener información completa para notificar
     const [videollamadaCreada] = await connection.query(
       `SELECT v.*, u.nombre_completo as creador_nombre
        FROM SESION_VIDEOLLAMADA v
@@ -1478,7 +1349,6 @@ app.post('/api/videollamadas', authenticateToken, async (req, res) => {
     
     console.log('Emitiendo notificaciones a participantes...');
     
-    // Emitir notificación por Socket.IO a cada participante
     for (const idParticipante of participantes) {
       io.to(`user_${idParticipante}`).emit('nueva_videollamada', {
         id_sesion: idSesion,
@@ -1508,12 +1378,10 @@ app.post('/api/videollamadas', authenticateToken, async (req, res) => {
   }
 });
 
-// Unirse a videollamada
 app.post('/api/videollamadas/:id/unirse', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Verificar que la videollamada existe y está activa
     const [videollamada] = await pool.query(
       'SELECT * FROM SESION_VIDEOLLAMADA WHERE id_sesion = ? AND estado = "activa"',
       [id]
@@ -1523,27 +1391,23 @@ app.post('/api/videollamadas/:id/unirse', authenticateToken, async (req, res) =>
       return res.status(404).json({ error: 'Videollamada no encontrada o ya finalizada' });
     }
     
-    // Verificar si ya está registrado como participante
     const [participante] = await pool.query(
       'SELECT * FROM PARTICIPANTES_VIDEOLLAMADA WHERE id_sesion = ? AND id_usuario = ?',
       [id, req.user.id]
     );
     
     if (participante.length > 0) {
-      // Actualizar hora de unión si ya existe
       await pool.query(
         'UPDATE PARTICIPANTES_VIDEOLLAMADA SET unido_en = NOW() WHERE id_sesion = ? AND id_usuario = ?',
         [id, req.user.id]
       );
     } else {
-      // Insertar como nuevo participante
       await pool.query(
         'INSERT INTO PARTICIPANTES_VIDEOLLAMADA (id_sesion, id_usuario, unido_en) VALUES (?, ?, NOW())',
         [id, req.user.id]
       );
     }
     
-    // Notificar a otros participantes
     io.to(`videollamada_${id}`).emit('usuario_unido', {
       id_sesion: id,
       usuario: req.user.username,
@@ -1561,18 +1425,15 @@ app.post('/api/videollamadas/:id/unirse', authenticateToken, async (req, res) =>
   }
 });
 
-// Salir de videollamada
 app.post('/api/videollamadas/:id/salir', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Actualizar hora de salida
     await pool.query(
       'UPDATE PARTICIPANTES_VIDEOLLAMADA SET salio_en = NOW() WHERE id_sesion = ? AND id_usuario = ? AND salio_en IS NULL',
       [id, req.user.id]
     );
     
-    // Notificar a otros participantes
     io.to(`videollamada_${id}`).emit('usuario_salio', {
       id_sesion: id,
       usuario: req.user.username,
@@ -1587,12 +1448,10 @@ app.post('/api/videollamadas/:id/salir', authenticateToken, async (req, res) => 
   }
 });
 
-// Finalizar videollamada (solo el creador)
 app.put('/api/videollamadas/:id/finalizar', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     
-    // Verificar que el usuario es el creador
     const [videollamada] = await pool.query(
       'SELECT * FROM SESION_VIDEOLLAMADA WHERE id_sesion = ? AND creada_por = ?',
       [id, req.user.id]
@@ -1602,19 +1461,16 @@ app.put('/api/videollamadas/:id/finalizar', authenticateToken, async (req, res) 
       return res.status(403).json({ error: 'Solo el creador puede finalizar la videollamada' });
     }
     
-    // Actualizar estado y fecha de fin
     await pool.query(
       'UPDATE SESION_VIDEOLLAMADA SET estado = "finalizada", fecha_fin = NOW() WHERE id_sesion = ?',
       [id]
     );
     
-    // Actualizar participantes que aún no salieron
     await pool.query(
       'UPDATE PARTICIPANTES_VIDEOLLAMADA SET salio_en = NOW() WHERE id_sesion = ? AND salio_en IS NULL',
       [id]
     );
     
-    // Registrar auditoría
     await pool.query(
       `INSERT INTO AUDITORIA 
        (id_usuario, accion, tabla_afectada, id_registro_afectado, descripcion)
@@ -1622,7 +1478,6 @@ app.put('/api/videollamadas/:id/finalizar', authenticateToken, async (req, res) 
       [req.user.id, id]
     );
     
-    // Notificar a todos los participantes
     const [participantes] = await pool.query(
       'SELECT id_usuario FROM PARTICIPANTES_VIDEOLLAMADA WHERE id_sesion = ?',
       [id]
@@ -1643,9 +1498,6 @@ app.put('/api/videollamadas/:id/finalizar', authenticateToken, async (req, res) 
 });
 
 
-// ============================================  
-// INICIAR SERVIDOR (CORREGIDO PARA RENDER)
-// ============================================
 const PORT = process.env.PORT || 3001;
 
 server.listen(PORT, '0.0.0.0', () => {
