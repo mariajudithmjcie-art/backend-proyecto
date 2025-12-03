@@ -731,6 +731,8 @@ app.get('/api/permisos/mis-permisos', authenticateToken, async (req, res) => {
   }
 });
 
+
+
 app.put('/api/ninos/:id/actualizar-completo', authenticateToken, checkRole('admin', 'operador'), async (req, res) => {
   let connection;
   
@@ -744,9 +746,15 @@ app.put('/api/ninos/:id/actualizar-completo', authenticateToken, checkRole('admi
     if (nino) {
       const camposNino = [];
       const valoresNino = [];
+      const camposExcluidosNino = [
+        'id_nino', 
+        'fecha_registro', 
+        'fecha_modificacion', 
+        'registrado_por'
+      ];
 
       Object.keys(nino).forEach(key => {
-        if (key !== 'id_nino') {
+        if (!camposExcluidosNino.includes(key)) {
           camposNino.push(`${key} = ?`);
           valoresNino.push(nino[key] || null);
         }
@@ -765,8 +773,16 @@ app.put('/api/ninos/:id/actualizar-completo', authenticateToken, checkRole('admi
       const camposTutor = [];
       const valoresTutor = [];
 
+      const camposExcluidosTutor = [
+        'id_tutor', 
+        'parentesco', 
+        'es_tutor_principal', 
+        'fecha_registro', 
+        'fecha_modificacion'
+      ];
+
       Object.keys(tutor).forEach(key => {
-        if (key !== 'id_tutor' && key !== 'parentesco' && key !== 'es_tutor_principal') {
+        if (!camposExcluidosTutor.includes(key)) {
           camposTutor.push(`${key} = ?`);
           valoresTutor.push(tutor[key] || null);
         }
@@ -812,8 +828,17 @@ app.put('/api/ninos/:id/actualizar-completo', authenticateToken, checkRole('admi
       const camposTamizaje = [];
       const valoresTamizaje = [];
 
+      const camposExcluidosTamizaje = [
+        'id_tamizaje', 
+        'ojo', 
+        'fecha_registro', 
+        'fecha_modificacion',
+        'id_nino',
+        'id_tutor'
+      ];
+
       Object.keys(tamizaje_oid).forEach(key => {
-        if (key !== 'id_tamizaje') {
+        if (!camposExcluidosTamizaje.includes(key)) {
           camposTamizaje.push(`${key} = ?`);
           
           if (key === 'fecha') {
@@ -836,13 +861,21 @@ app.put('/api/ninos/:id/actualizar-completo', authenticateToken, checkRole('admi
       }
     }
 
-
     if (tamizaje_oi && tamizaje_oi.id_tamizaje) {
       const camposTamizaje = [];
       const valoresTamizaje = [];
 
+      const camposExcluidosTamizaje = [
+        'id_tamizaje', 
+        'ojo', 
+        'fecha_registro', 
+        'fecha_modificacion',
+        'id_nino',
+        'id_tutor'
+      ];
+
       Object.keys(tamizaje_oi).forEach(key => {
-        if (key !== 'id_tamizaje') {
+        if (!camposExcluidosTamizaje.includes(key)) {
           camposTamizaje.push(`${key} = ?`);
           
           if (key === 'fecha') {
