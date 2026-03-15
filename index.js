@@ -1536,7 +1536,7 @@ const PORT = process.env.PORT || 3001;
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`
 ════════════════════════════════════════════════
-  🚀 SERVIDOR DESPLEGADO EN RENDER.COM
+  SERVIDOR DESPLEGADO EN RENDER.COM
   Puerto: ${PORT}
   Entorno: ${process.env.NODE_ENV || 'development'}
   Base de datos: ${process.env.DB_NAME}

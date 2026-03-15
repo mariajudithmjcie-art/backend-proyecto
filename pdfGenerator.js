@@ -34,7 +34,7 @@ class PDFGenerator {
           reject(error);
         });
 
-        // Configuración del documento
+        // configuracion del documento
         console.log('Agregando header...');
         await this._agregarHeader(doc, ninoData.nino);
         
@@ -71,13 +71,13 @@ class PDFGenerator {
 
   static async _agregarHeader(doc, nino) {
     try {
-      // Rectángulo superior con color
+      // Rectangulo superior con color
       doc
         .rect(0, 0, 612, 80)
         .fillColor('#4A90E2')
         .fill();
 
-      // Título principal
+      // titulo principal
       doc
         .fontSize(24)
         .font('Helvetica-Bold')
@@ -86,7 +86,7 @@ class PDFGenerator {
         .fontSize(16)
         .text('TAMIZAJE VISUAL INFANTIL', 50, 48, { align: 'center' });
 
-      // Información de generación
+      // Informacion de generacion
       doc
         .fontSize(9)
         .font('Helvetica')
@@ -94,7 +94,7 @@ class PDFGenerator {
         .text(`Fecha de generación: ${this._formatearFechaCompleta(new Date())}`, 50, 90, { align: 'right' })
         .text(`Hora: ${new Date().toLocaleTimeString('es-ES')}`, 50, 102, { align: 'right' });
 
-      // CORREGIDO: Establecer Y después del header azul
+
       doc.y = 120;
 
       // Intentar cargar imagen del niño si existe
@@ -103,7 +103,7 @@ class PDFGenerator {
         try {
           const imageBuffer = await this._descargarImagen(nino.url_imagen);
           
-          // CORREGIDO: Posición de la foto al lado derecho, SIN interferir con el texto
+
           const photoX = 450;
           const photoY = 120;
           const photoSize = 100;
@@ -137,7 +137,6 @@ class PDFGenerator {
         console.log('No hay URL de imagen');
       }
 
-      // CORREGIDO: Línea separadora después de la foto
       doc.y = 240;
       doc
         .moveTo(50, doc.y)
@@ -254,29 +253,28 @@ class PDFGenerator {
 
   static _agregarTamizajeDetallado(doc, tamizaje, titulo) {
     try {
-      // CORREGIDO: Verificar si necesitamos nueva página con más margen
+
       if (doc.y > 620) {
         doc.addPage();
         doc.y = 50;
       }
 
-      // Guardar posición Y antes del rectángulo
+
       const tituloY = doc.y;
 
-      // Rectángulo de fondo verde
+
       doc
         .rect(50, tituloY, 512, 25)
         .fillColor('#28a745')
         .fill();
 
-      // Texto blanco centrado verticalmente
       doc
         .fontSize(14)
         .font('Helvetica-Bold')
         .fillColor('#FFFFFF')
         .text(titulo, 55, tituloY + 6, { align: 'left' });
 
-      // Mover Y después del título y agregar espacio
+
       doc.y = tituloY + 25;
       doc.moveDown(0.8);
 
@@ -338,7 +336,6 @@ class PDFGenerator {
       }
 
       if (tamizaje.diagnostico_preliminar && tamizaje.diagnostico_preliminar.trim() !== '') {
-        // CORREGIDO: Verificar espacio antes del diagnóstico
         if (doc.y > 620) {
           doc.addPage();
           doc.y = 50;
@@ -380,7 +377,6 @@ class PDFGenerator {
 
       doc.moveDown(0.8);
 
-      // CORREGIDO: Línea separadora solo si NO estamos al final de la página
       if (doc.y < 650) {
         doc
           .moveTo(50, doc.y)
@@ -400,7 +396,6 @@ class PDFGenerator {
     try {
       if (!observaciones || observaciones.trim() === '') return;
 
-      // CORREGIDO: Verificar espacio antes de agregar observaciones
       if (doc.y > 600) {
         doc.addPage();
         doc.y = 50;
@@ -449,27 +444,23 @@ class PDFGenerator {
 
   static _agregarTituloSeccion(doc, titulo) {
     try {
-      // CORREGIDO: Verificar espacio antes de agregar título
       if (doc.y > 680) {
         doc.addPage();
       }
 
       const tituloY = doc.y;
 
-      // Rectángulo de fondo azul
       doc
         .rect(50, tituloY, 512, 25)
         .fillColor('#4A90E2')
         .fill();
 
-      // Texto blanco centrado verticalmente
       doc
         .fontSize(14)
         .font('Helvetica-Bold')
         .fillColor('#FFFFFF')
         .text(titulo, 55, tituloY + 6, { align: 'left' });
 
-      // CORREGIDO: Mover Y después del título
       doc.y = tituloY + 25;
       doc.moveDown(0.8);
     } catch (error) {
@@ -488,7 +479,6 @@ class PDFGenerator {
       datos.forEach((dato, index) => {
         const y = startY + (index * rowHeight);
 
-        // CORREGIDO: Verificar espacio en la página
         if (y > 700) {
           doc.addPage();
           doc.y = 50;
@@ -537,13 +527,11 @@ class PDFGenerator {
       
       console.log(`Total de páginas: ${pageCount}`);
       
-      // CORREGIDO: Solo agregar footer a páginas con contenido
+
       for (let i = 0; i < pageCount; i++) {
         const pageIndex = range.start + i;
         doc.switchToPage(pageIndex);
         
-        // CORREGIDO: Verificar que la página tenga contenido real
-        // Si la página está casi vacía (Y < 200), es probablemente una página en blanco
         if (doc.y < 200 && i > 0) {
           console.log(`Página ${i + 1} parece estar vacía, omitiendo...`);
           continue;
@@ -573,7 +561,6 @@ class PDFGenerator {
     } catch (error) {
       console.error('Error en _agregarFooter:', error);
       console.error('Detalles:', error.message);
-      // CORREGIDO: No lanzar error si falla el footer, solo registrarlo
       console.log('Continuando sin footer completo...');
     }
   }
